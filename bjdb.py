@@ -4,6 +4,9 @@ from tinydb import Query
 
 
 def pack_data(arg):
+
+    '''    bytes长度+bytes    '''
+
     if isinstance(arg, bytes):
         bytes_ = arg
     else:
@@ -13,26 +16,39 @@ def pack_data(arg):
     return len_bytes + bytes_
 
 
-def to_header_bytes(header):
+def to_header_bytes(headers):
+
+    ''' 生成headers record '''
 
     line_type = b't'
 
-    header_whole = ['_default', '_id']
-    header_whole.extend(header)
+    headers_whole = ['_default', '_id']
+    headers_whole.extend(headers)
 
-    header_bytes = b''.join([pack_data(i) for i in header_whole])
+    headers_bytes = b''.join([pack_data(i) for i in headers_whole])
 
-    return pack_data(line_type + header_bytes)
+    return pack_data(line_type + headers_bytes)
 
 
-def to_record(table, _id, headers, data, record_type=b'i'):
+def list_to_record(table, _id, data_list, record_type=b'i'):
 
-    ''' 生成一条数据Record'''
+    ''' list -> record '''
+
+    # _data = [table, _id] + data
+    data_bytes = b''.join([pack_data(d) for d in data_list])
+    return pack_data(record_type + data_bytes)
+
+
+def dict_to_record(table, _id, headers, data, record_type=b'i'):
+
+    ''' dict -> Record '''
 
     data_list = [table, _id] + [data[h] for h in headers if data.get(h)]
-    data_bytes = b''.join([pack_data(d) for d in data_list])
+    # data_bytes = b''.join([pack_data(d) for d in data_list])
+    # data_
 
-    return pack_data(record_type + data_bytes)
+    # return pack_data(record_type + data_bytes)
+    return list_to_record(table, _id, data, record_type)
 
 
 def get_empty_db():
@@ -126,7 +142,7 @@ def bjdb(filename, header=None):
 
     def insert(data, table='_default'):
         data_list = [data[h] for h in db[table]['headers']]
-        record = to_record(table,
+        record = dict_to_record(table,
                            _id=len(db[table]['data']),
                            headers=db[table]['headers'],
                            data=data)
@@ -151,7 +167,7 @@ def bjdb(filename, header=None):
                 print(i, e)
                 db[table]['data'][i] = None
 
-                record = to_record(table=table,
+                record = dict_to_record(table=table,
                                    _id=i,
                                    headers=headers,
                                    data={},
@@ -174,7 +190,7 @@ def bjdb(filename, header=None):
                 newdata_list = [olddata[h] for h in headers]
                 db[table]['data'][i] = newdata_list
 
-                record = to_record(table=table,
+                record = dict_to_record(table=table,
                                    _id=i,
                                    headers=headers,
                                    data=olddata,
