@@ -4,8 +4,6 @@ from tinydb import Query
 
 
 def pack_data(arg):
-    # if isinstance(arg, str):
-    #     bytes_ = arg.encode()
     if isinstance(arg, bytes):
         bytes_ = arg
     else:
@@ -30,8 +28,6 @@ def to_header_bytes(header):
 def to_record(table, _id, headers, data, record_type=b'i'):
 
     ''' 生成一条数据Record'''
-
-    # _id_byte = str(_id).encode()
 
     data_list = [table, _id] + [data[h] for h in headers if data.get(h)]
     data_bytes = b''.join([pack_data(d) for d in data_list])
@@ -86,7 +82,6 @@ def read_db(filename):
     for record in iter(lambda: get_record(f), b''):
 
         data_list = unpack_data(record[1:])
-        print(data_list)
         table = data_list[0]
 
         if record[:1] == b't':
@@ -111,7 +106,10 @@ def read_db(filename):
 
 
 def to_dict(headers, element):
-    return dict(zip(headers, element))
+    if element:
+        return dict(zip(headers, element))
+    else:
+        return element
 
 
 def write(writer, bytes_):
@@ -134,7 +132,6 @@ def bjdb(filename, header=None):
                            data=data)
         db[table]['data'].append(data_list)
         write(writer, record)
-        print(db)
 
     def search(cond, table='_default'):
 
@@ -151,6 +148,7 @@ def bjdb(filename, header=None):
 
         for i, e in enumerate(elements_dict):
             if cond(e):
+                print(i, e)
                 db[table]['data'][i] = None
 
                 record = to_record(table=table,
@@ -164,8 +162,6 @@ def bjdb(filename, header=None):
             else:
                 pass
 
-        print(db)
-
     def update(newdata, cond, table='_default'):
 
         headers = db[table]['headers']
@@ -174,36 +170,83 @@ def bjdb(filename, header=None):
         for i, olddata in enumerate(elements_dict):
             if cond(olddata):
                 olddata.update(newdata)
+
                 newdata_list = [olddata[h] for h in headers]
                 db[table]['data'][i] = newdata_list
+
                 record = to_record(table=table,
                                    _id=i,
                                    headers=headers,
                                    data=olddata,
                                    record_type=b'u')
                 write(writer, record)
+
             else:
                 pass
-        print(db)
 
+    def merge():
+        writer.close()
+        temp_file = filename + '~'
+        with open(temp_file, 'wb') as f:
+            for table in db:
+                headers = db[table]['headers']
+                f.write(to_header_bytes(header))
+                _id = 0
+                for d in db[table]['data']:
+                    if d:
+                        data_list = [table, _id] + d
+                        record = pack_data(b'i' + b''.join([pack_data(d) for d in data_list]))
+                        f.write(record)
+                        _id += 1
+                    else:
+                        pass
+        os.rename(temp_file, filename)
+        new_db = bjdb(filename)
+        return new_db
+
+    def all():
+        return db
 
     method = {
         'insert': insert,
         'search': search,
         'delete': delete,
-        'update': update
+        'update': update,
+        'merge': merge,
+        'all': all
     }
     return method
 
 
 def test():
-    db = bjdb('test.db', ['uid', 'url'])
-    # db['insert']({'uid': 'a', 'url': 'http://example.com'})
+    filename = 'test1.db'
+
+    db = bjdb(filename, ['uid', 'url'])
+    print('初始化数据库', db['all']())
+
+    db['insert']({'uid': 'a', 'url': 'http://example.com'})
+    db['insert']({'uid': 'b', 'url': 'http://example.com'})
+    db['insert']({'uid': 'c', 'url': 'http://example.com'})
+    print('测试插入', db['all']())
+
     e = Query()
-    print(db['search'](e.uid == 'd'))
-    # db['update']({'url': 'http://ip.cn'}, e.uid == 'a')
-    # db['delete'](e.uid == 'a')
+    print('搜索c', db['search'](e.uid == 'c'))
+    print('搜索d', db['search'](e.uid == 'd'))
+
+    db['update']({'url': 'http://ip.cn'}, e.uid == 'a')
+    # db = db['merge']()
+    print('测试修改', db['all']())
+
+    db['delete'](e.uid == 'b')
+    db['delete'](e.uid == 'c')
+    print('测试删除', db['all']())
+
+    db = db['merge']()
+    print(db['all']())
+
+    os.remove(filename)
 
 
-test()
+if __name__  == '__main__':
+    test()
 
