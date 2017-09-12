@@ -138,7 +138,7 @@ def bjdb(filename, header=None):
         headers = db[table]['headers']
         elements_dict = (to_dict(headers, e) for e in db[table]['data'] if e)
 
-        results = [e for e in elements_dict if cond(e)]
+        results = (e for e in elements_dict if cond(e))
         return results
 
     def delete(cond, table='_default'):
@@ -204,6 +204,15 @@ def bjdb(filename, header=None):
         new_db = bjdb(filename)
         return new_db
 
+    def create_table(table_name, headers):
+        db[table_name] = {
+            'headers': headers,
+            'data': []
+        }
+
+    def purge(table='_default'):
+        db[table] = {}
+
     def all():
         return db
 
@@ -213,12 +222,14 @@ def bjdb(filename, header=None):
         'delete': delete,
         'update': update,
         'merge': merge,
+        'create_table': create_table,
+        'purge': purge,
         'all': all
     }
     return method
 
 
-def test():
+def test1():
     filename = 'test1.db'
 
     db = bjdb(filename, ['uid', 'url'])
@@ -230,8 +241,8 @@ def test():
     print('测试插入', db['all']())
 
     e = Query()
-    print('搜索c', db['search'](e.uid == 'c'))
-    print('搜索d', db['search'](e.uid == 'd'))
+    print('搜索c', list(db['search'](e.uid == 'c')))
+    print('搜索d', list(db['search'](e.uid == 'd')))
 
     db['update']({'url': 'http://ip.cn'}, e.uid == 'a')
     # db = db['merge']()
@@ -246,7 +257,24 @@ def test():
 
     os.remove(filename)
 
+def test2():
+    filename = 'test1.db'
+
+    db = bjdb(filename, ['uid', 'url'])
+    print('初始化数据库', db['all']())
+
+    db['insert']({'uid': 'a', 'url': 'http://example.com'})
+    db['insert']({'uid': 'b', 'url': 'http://example.com'})
+    db['insert']({'uid': 'c', 'url': 'http://example.com'})
+    print('测试插入', db['all']())
+
+    db['purge']()
+    db['create_table']('new', ['name', 'age'])
+    print(db['all']())
+
+    os.remove(filename)
+
 
 if __name__  == '__main__':
-    test()
+    test2()
 
