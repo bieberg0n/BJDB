@@ -332,17 +332,19 @@ def test2():
 def test3():
     filename = 'test.db'
 
-    db = bjdb(filename, ['uid', 'url'])
-    # for i in range(1234):
+    db = BJDB(filename, ['uid', 'url'])
+    # for i in range(1234567):
     #     db['insert']({'uid': i, 'url': 'http://chenyulinchenyulinchenyulinchenyulinchenyulinchenyulinchenyulinchenyulinchenyulinchenyulinchenyulinchenyulinchenyulinchenyulinchenyulinchenyulinchenyulinchenyulinchenyulinchenyulinchenyulinchenyulinchenyulinchenyulinchenyulinchenyulinchenyulinchenyulin.cn'})
+    # input(':')
+    print('continue')
     q = Query()
-    db['delete'](q.uid == '234')
-    print(list(db['search'](q.uid == '234')))
+    # db['delete'](q.uid == '234')
+    print(list(db['search'](q.uid == '233333')))
 
     # os.remove(filename)
     # db['merge']()
 
 
 if __name__  == '__main__':
-    test2()
+    test3()
 

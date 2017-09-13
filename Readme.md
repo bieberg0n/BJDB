@@ -25,7 +25,7 @@ db['insert']({'name': 'Tom', 'age': '3'})
 
 # Search
 query = Query()
-results = list(db.search(query.name == 'Tom'))
+results = list(db['search'](query.name == 'Tom'))
 print(results)
 
 # Update
