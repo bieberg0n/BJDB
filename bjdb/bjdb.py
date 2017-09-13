@@ -238,7 +238,7 @@ def BJDB(filename, header=None):
                     else:
                         pass
         os.rename(temp_file, filename)
-        new_db = bjdb(filename)
+        new_db = BJDB(filename)
         return new_db
 
 
