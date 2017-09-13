@@ -16,13 +16,13 @@ def pack_data(arg):
     return len_bytes + bytes_
 
 
-def to_header_bytes(headers):
+def to_header_bytes(headers, table='_default'):
 
     ''' 生成headers record '''
 
     line_type = b't'
 
-    headers_whole = ['_default', '_id']
+    headers_whole = [table, '_id']
     headers_whole.extend(headers)
 
     headers_bytes = b''.join([pack_data(i) for i in headers_whole])
@@ -57,12 +57,12 @@ def get_empty_db():
     return db
 
 
-def create_db(filename, header):
+def create_db(filename, headers):
     writer = open(filename, 'wb')
-    writer.write(to_header_bytes(header))
+    writer.write(to_header_bytes(headers))
 
     db = get_empty_db()
-    db['_default']['headers'] = header
+    db['_default']['headers'] = headers
 
     return db, writer
 
@@ -102,11 +102,12 @@ def read_db(filename):
     for data_bytes in iter(lambda: unpack_record(f), b''):
 
         data_list = unpack_data(data_bytes[1:])
+        # print(data_bytes, data_list)
         table = data_list[0]
 
         if data_bytes[:1] == b't':
             if not db.get(table):
-                db[table] = []
+                db[table] = {'headers':[], 'datas':[]}
             db[table]['headers'] = data_list[2:]
 
         elif data_bytes[:1] == b'i':
@@ -118,6 +119,9 @@ def read_db(filename):
 
         elif data_bytes[:1] == b'u':
             db[table]['datas'][int(data_list[1])] = data_list[2:]
+
+        elif data_bytes[:1] == b'p':
+            db[table] = {}
 
         else:
             pass
@@ -243,14 +247,17 @@ def BJDB(filename, header=None):
             'headers': headers,
             'datas': []
         }
+        writer.write(to_header_bytes(headers, table_name))
 
 
     def purge(table='_default'):
-        db[table] = {}
+        db[table] = {'headers':[], 'datas':[]}
+        writer.write(list_to_record(table, -1, [], b'p'))
 
 
-    def all():
-        return db
+    def all(table='_default'):
+        headers = db[table]['headers']
+        return (to_dict(headers, e) for e in db[table]['datas'])
 
 
     method = {
@@ -300,17 +307,24 @@ def test1():
 def test2():
     filename = 'test1.db'
 
-    db = bjdb(filename, ['uid', 'url'])
-    print('初始化数据库', db['all']())
+    db = BJDB(filename, ['uid', 'url'])
+    # print('初始化数据库', db['all']())
 
-    db['insert']({'uid': 'a', 'url': 'http://example.com'})
-    db['insert']({'uid': 'b', 'url': 'http://example.com'})
-    db['insert']({'uid': 'c', 'url': 'http://example.com'})
-    print('测试插入', db['all']())
+    # db['insert']({'uid': 'a', 'url': 'http://example.com'})
+    # db['insert']({'uid': 'b', 'url': 'http://example.com'})
+    # db['insert']({'uid': 'c', 'url': 'http://example.com'})
+    # print('测试插入', db['all']())
+    db['create_table']('test', ['name', 'age'])
+    db['insert']({'name': 'c', 'age': 'http://example.com'}, table='test')
 
-    db['purge']()
-    db['create_table']('new', ['name', 'age'])
-    print(db['all']())
+    db = BJDB(filename, ['uid', 'url'])
+    for i in db['all']('test'):
+        print(i)
+
+    db['purge']('test')
+    # db['create_table']('new', ['name', 'age'])
+    for i in db['all']('test'):
+        print(i)
 
     os.remove(filename)
 
@@ -330,5 +344,5 @@ def test3():
 
 
 if __name__  == '__main__':
-    test3()
+    test2()
 

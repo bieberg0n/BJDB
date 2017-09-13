@@ -42,8 +42,8 @@ print( list( db['search'](query.phone == 'iPhone X', table='phone_price') ) )
 # Del table
 db['purge']('phone_price')
 
-# Print all data
-print( db['all']() )
+# Print all data from table
+print( list( db['all']('phone_price') ) )
 ```
 
 # License (GPL-3.0)
