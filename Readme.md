@@ -5,7 +5,7 @@
 ---
 
 ### Depends
-Python3.*
+Python3.*  
 Tinydb
 
 ### Install
@@ -46,4 +46,4 @@ db['purge']('phone_price')
 print( list( db['all']('phone_price') ) )
 ```
 
-# License (GPL-3.0)
+### License (GPL-3.0)
