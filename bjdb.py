@@ -34,8 +34,8 @@ def list_to_record(table, _id, data_list, record_type=b'i'):
 
     ''' list -> record '''
 
-    # _data = [table, _id] + data
-    data_bytes = b''.join([pack_data(d) for d in data_list])
+    _data_list = [table, _id] + data_list
+    data_bytes = b''.join([pack_data(d) for d in _data_list])
     return pack_data(record_type + data_bytes)
 
 
@@ -43,19 +43,15 @@ def dict_to_record(table, _id, headers, data, record_type=b'i'):
 
     ''' dict -> Record '''
 
-    data_list = [table, _id] + [data[h] for h in headers if data.get(h)]
-    # data_bytes = b''.join([pack_data(d) for d in data_list])
-    # data_
-
-    # return pack_data(record_type + data_bytes)
-    return list_to_record(table, _id, data, record_type)
+    data_list = [data[h] for h in headers if data and data.get(h)]
+    return list_to_record(table, _id, data_list, record_type)
 
 
 def get_empty_db():
     db = {
         '_default':{
             'headers':[],
-            'data':[]
+            'datas':[]
         }
     }
     return db
@@ -71,7 +67,7 @@ def create_db(filename, header):
     return db, writer
 
 
-def get_record(f):
+def unpack_record(f):
     r = f.read(2)
     if r:
         length = struct.unpack('>H', r)[0]
@@ -92,28 +88,36 @@ def unpack_data(pdata):
 
 
 def read_db(filename):
+
+    '''
+    data_bytes[0]: record type
+    data_list[0]: table name
+    data_list[1]: _id
+    data_list[2:]: data
+    '''
+
     f = open(filename, 'r+b')
     db = get_empty_db()
 
-    for record in iter(lambda: get_record(f), b''):
+    for data_bytes in iter(lambda: unpack_record(f), b''):
 
-        data_list = unpack_data(record[1:])
+        data_list = unpack_data(data_bytes[1:])
         table = data_list[0]
 
-        if record[:1] == b't':
+        if data_bytes[:1] == b't':
             if not db.get(table):
                 db[table] = []
             db[table]['headers'] = data_list[2:]
 
-        elif record[:1] == b'i':
+        elif data_bytes[:1] == b'i':
             data = data_list[2:]
-            db[table]['data'].append(data)
+            db[table]['datas'].append(data)
 
-        elif record[:1] == b'd':
-            db[table]['data'][int(data_list[1])] = None
+        elif data_bytes[:1] == b'd':
+            db[table]['datas'][int(data_list[1])] = None
 
-        elif record[:1] == b'u':
-            db[table]['data'][int(data_list[1])] = data_list[2:]
+        elif data_bytes[:1] == b'u':
+            db[table]['datas'][int(data_list[1])] = data_list[2:]
 
         else:
             pass
@@ -140,65 +144,77 @@ def bjdb(filename, header=None):
     else:
         db, writer = create_db(filename, header)
 
+
     def insert(data, table='_default'):
-        data_list = [data[h] for h in db[table]['headers']]
-        record = dict_to_record(table,
-                           _id=len(db[table]['data']),
-                           headers=db[table]['headers'],
-                           data=data)
-        db[table]['data'].append(data_list)
+        data_list = [str(data[h]) for h in db[table]['headers']]
+        record = list_to_record(table,
+                                _id=len(db[table]['datas']),
+                                data_list=data_list)
+        db[table]['datas'].append(data_list)
         write(writer, record)
+
 
     def search(cond, table='_default'):
 
         headers = db[table]['headers']
-        elements_dict = (to_dict(headers, e) for e in db[table]['data'] if e)
+        elements_dict = (to_dict(headers, e) for e in db[table]['datas'] if e)
 
         results = (e for e in elements_dict if cond(e))
         return results
 
+
+    def update_element(table, _id, olddata, newdata, record_type=b'u'):
+        if record_type == b'u':
+            olddata.update(newdata)
+            newdata_list = [olddata[h] for h in db[table]['headers']]
+        else:
+            newdata_list = []
+        db[table]['datas'][_id] = newdata_list
+
+        record = list_to_record(table=table,
+                                _id=_id,
+                                data_list=newdata_list,
+                                record_type=record_type)
+        write(writer, record)
+
+
+    def delete_element(table, _id):
+        update_element(table, _id, {}, {}, b'd')
+
+
     def delete(cond, table='_default'):
 
         headers = db[table]['headers']
-        elements_dict = (to_dict(headers, e) for e in db[table]['data'])
+        elements_dict = (to_dict(headers, e) for e in db[table]['datas'])
 
-        for i, e in enumerate(elements_dict):
-            if cond(e):
-                print(i, e)
-                db[table]['data'][i] = None
+        [delete_element(table, i) for i, e in enumerate(elements_dict) if cond(e)]
 
-                record = dict_to_record(table=table,
-                                   _id=i,
-                                   headers=headers,
-                                   data={},
-                                   record_type=b'd')
-                # print(record)
-                write(writer, record)
-
-            else:
-                pass
 
     def update(newdata, cond, table='_default'):
 
         headers = db[table]['headers']
-        elements_dict = (to_dict(headers, e) for e in db[table]['data'])
+        elements_dict = (to_dict(headers, e) for e in db[table]['datas'])
 
-        for i, olddata in enumerate(elements_dict):
-            if cond(olddata):
-                olddata.update(newdata)
+        [update_element(table, i, olddata, newdata)
+         for i, olddata in enumerate(elements_dict) if cond(olddata)]
+        # return
+        # for i, olddata in enumerate(elements_dict):
+        #     if cond(olddata):
+        #         olddata.update(newdata)
 
-                newdata_list = [olddata[h] for h in headers]
-                db[table]['data'][i] = newdata_list
+        #         newdata_list = [olddata[h] for h in headers]
+        #         db[table]['datas'][i] = newdata_list
 
-                record = dict_to_record(table=table,
-                                   _id=i,
-                                   headers=headers,
-                                   data=olddata,
-                                   record_type=b'u')
-                write(writer, record)
+        #         record = dict_to_record(table=table,
+        #                            _id=i,
+        #                            headers=headers,
+        #                            data=olddata,
+        #                            record_type=b'u')
+        #         write(writer, record)
 
-            else:
-                pass
+        #     else:
+        #         pass
+
 
     def merge():
         writer.close()
@@ -206,12 +222,13 @@ def bjdb(filename, header=None):
         with open(temp_file, 'wb') as f:
             for table in db:
                 headers = db[table]['headers']
-                f.write(to_header_bytes(header))
+                f.write(to_header_bytes(headers))
                 _id = 0
-                for d in db[table]['data']:
-                    if d:
-                        data_list = [table, _id] + d
-                        record = pack_data(b'i' + b''.join([pack_data(d) for d in data_list]))
+                for data in db[table]['datas']:
+                    if data:
+                        record = list_to_record(table=table,
+                                                _id=_id,
+                                                data_list=data)
                         f.write(record)
                         _id += 1
                     else:
@@ -220,17 +237,21 @@ def bjdb(filename, header=None):
         new_db = bjdb(filename)
         return new_db
 
+
     def create_table(table_name, headers):
         db[table_name] = {
             'headers': headers,
-            'data': []
+            'datas': []
         }
+
 
     def purge(table='_default'):
         db[table] = {}
 
+
     def all():
         return db
+
 
     method = {
         'insert': insert,
@@ -268,6 +289,9 @@ def test1():
     db['delete'](e.uid == 'c')
     print('测试删除', db['all']())
 
+    db = bjdb(filename)
+    print(db['all']())
+
     db = db['merge']()
     print(db['all']())
 
@@ -291,6 +315,20 @@ def test2():
     os.remove(filename)
 
 
+def test3():
+    filename = 'test.db'
+
+    db = bjdb(filename, ['uid', 'url'])
+    # for i in range(1234):
+    #     db['insert']({'uid': i, 'url': 'http://chenyulinchenyulinchenyulinchenyulinchenyulinchenyulinchenyulinchenyulinchenyulinchenyulinchenyulinchenyulinchenyulinchenyulinchenyulinchenyulinchenyulinchenyulinchenyulinchenyulinchenyulinchenyulinchenyulinchenyulinchenyulinchenyulinchenyulinchenyulin.cn'})
+    q = Query()
+    db['delete'](q.uid == '234')
+    print(list(db['search'](q.uid == '234')))
+
+    # os.remove(filename)
+    # db['merge']()
+
+
 if __name__  == '__main__':
-    test2()
+    test3()
 
