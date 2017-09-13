@@ -137,7 +137,7 @@ def write(writer, bytes_):
     writer.flush()
 
 
-def bjdb(filename, header=None):
+def BJDB(filename, header=None):
     if os.path.isfile(filename):
         db, writer = read_db(filename)
 
