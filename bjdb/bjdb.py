@@ -104,6 +104,7 @@ def read_db(filename):
         data_list = unpack_data(data_bytes[1:])
         # print(data_bytes, data_list)
         table = data_list[0]
+        data = data_list[1:]
 
         if data_bytes[:1] == b't':
             if not db.get(table):
@@ -111,11 +112,11 @@ def read_db(filename):
             db[table]['headers'] = list(data_list[1:])
 
         elif data_bytes[:1] == b'i':
-            data = data_list[1:]
             db[table]['datas'].add(data)
 
         elif data_bytes[:1] == b'd':
-            db[table]['datas'][int(data_list[1])] = None
+            # db[table]['datas'][int(data_list[1])] = None
+            db[table]['datas'].remove(data)
 
         elif data_bytes[:1] == b'u':
             db[table]['datas'][int(data_list[1])] = data_list[1:]
@@ -158,6 +159,11 @@ def BJDB(filename, header=None):
         # print(db)
 
 
+    def exist(data, table='_default'):
+        data_tuple = tuple(str(data[h]) for h in db[table]['headers'])
+        return data_tuple in db[table]['datas']
+
+
     def search(cond, table='_default'):
 
         headers = db[table]['headers']
@@ -192,6 +198,8 @@ def BJDB(filename, header=None):
         element = tuple(data_dict[h] for h in headers)
         db[table]['datas'].remove(element)
 
+        write(writer, list_to_record(table, element, record_type=b'd'))
+
         # [delete_element(table, i) for i, e in enumerate(elements_dict) if cond(e)]
 
 
@@ -222,8 +230,8 @@ def BJDB(filename, header=None):
                     else:
                         pass
         os.rename(temp_file, filename)
-        new_db = BJDB(filename)
-        return new_db
+        # new_db = BJDB(filename)
+        # return new_db
 
 
     def create_table(headers, table_name='_default'):
@@ -247,6 +255,7 @@ def BJDB(filename, header=None):
     method = {
         'insert': insert,
         'search': search,
+        'exist': exist,
         'delete': delete,
         # 'update': update,
         'merge': merge,
@@ -264,8 +273,8 @@ def test1():
     print('初始化数据库')
     print(list(db['all']()))
 
-    # db['insert']({'url': 'http://example1.com'})
-    # db['insert']({'url': 'http://example2.com'})
+    db['insert']({'url': 'http://example1.com'})
+    db['insert']({'url': 'http://example2.com'})
     # db['insert']({'url': 'http://example3.com'})
     # print('测试插入')
     # print(list(db['all']()))
@@ -274,7 +283,8 @@ def test1():
 
     e = Query()
     print('搜索c', list(db['search'](e.url == 'http://example1.com')))
-    print('搜索d', list(db['search'](e.uid == 'd')))
+    print('是否存在', db['exist']({'url': 'http://example2.com'}))
+    print('是否存在', db['exist']({'url': 'http://example3.com'}))
 
     # db['update']({'url': 'http://ip.cn'}, e.uid == 'a')
     # print('测试修改', db['all']())
@@ -283,16 +293,20 @@ def test1():
     # db['delete'](e.uid == 'c')
     db['delete']({'url': 'http://example2.com'})
     print('测试删除')
-    print(list(db['all']()));exit()
+    print(list(db['all']()))
 
 
-    db = bjdb(filename)
-    print(db['all']())
+    db = BJDB(filename)
+    print(list(db['all']()))
 
-    db = db['merge']()
-    print(db['all']())
+    db['merge']()
+    print(list(db['all']()))
 
     os.remove(filename)
+
+def test2():
+    pass
+
 
 
 if __name__  == '__main__':
