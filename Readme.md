@@ -28,14 +28,11 @@ query = Query()
 results = list(db['search'](query.name == 'Tom'))
 print(results)
 
-# Update
-db['update']({'age': 4}, query.name == 'Tom'})
-
 # Delete
-db['delete'](query.name == 'Tom')
+db['delete']({'name': 'Tom', 'age': '3'})
 
 # New table
-db['create_table']('phone_price', ['phone', 'price'])
+db['create_table'](['phone', 'price'], 'phone_price')
 db['insert']({'phone':'iPhone X', 'price': '999'}, table='phone_price')
 print( list( db['search'](query.phone == 'iPhone X', table='phone_price') ) )
 
