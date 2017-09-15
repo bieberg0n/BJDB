@@ -59,7 +59,8 @@ def get_empty_db():
 
 def create_db(filename, headers):
     writer = open(filename, 'wb')
-    writer.write(to_header_bytes(headers))
+    record = to_header_bytes(headers)
+    write(writer, record)
 
     db = get_empty_db()
     db['_default']['headers'] = headers
@@ -122,7 +123,8 @@ def read_db(filename):
             db[table]['datas'][int(data_list[1])] = data_list[1:]
 
         elif data_bytes[:1] == b'p':
-            db[table] = {'headers': [], 'datas': set()}
+            # db[table] = {'headers': [], 'datas': set()}
+            db[table]['datas'] = set()
 
         else:
             pass
@@ -243,7 +245,8 @@ def BJDB(filename, header=None):
 
 
     def purge(table='_default'):
-        db[table] = {'headers': [], 'datas': set()}
+        # db[table] = {'headers': [], 'datas': set()}
+        db[table]['datas'] = set()
         writer.write(list_to_record(table, tuple(), b'p'))
 
 
