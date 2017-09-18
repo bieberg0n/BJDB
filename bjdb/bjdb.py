@@ -255,6 +255,10 @@ def BJDB(filename, header=None):
         return (to_dict(headers, e) for e in db[table]['datas'])
 
 
+    def tables():
+        return list(db.keys())
+
+
     method = {
         'insert': insert,
         'search': search,
@@ -264,7 +268,8 @@ def BJDB(filename, header=None):
         'merge': merge,
         'create_table': create_table,
         'purge': purge,
-        'all': all
+        'all': all,
+        'tables': tables
     }
     return method
 
@@ -304,6 +309,8 @@ def test1():
 
     db['merge']()
     print(list(db['all']()))
+
+    print(db['tables']())
 
     os.remove(filename)
 
