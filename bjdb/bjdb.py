@@ -259,6 +259,10 @@ def BJDB(filename, header=None):
         return list(db.keys())
 
 
+    def headers(table='_default'):
+        return db[table]['headers']
+
+
     method_dict = {
         'insert': insert,
         'search': search,
@@ -269,7 +273,8 @@ def BJDB(filename, header=None):
         'create_table': create_table,
         'purge': purge,
         'all': all,
-        'tables': tables
+        'tables': tables,
+        'headers': headers
     }
 
     class Method():
