@@ -21,26 +21,26 @@ from bjdb import BJDB, Query
 db = BJDB('test.db', ['name', 'age'])
 
 # Insert
-db['insert']({'name': 'Tom', 'age': '3'})
+db.insert({'name': 'Tom', 'age': '3'})
 
 # Search
 query = Query()
-results = list(db['search'](query.name == 'Tom'))
+results = list(db.search(query.name == 'Tom'))
 print(results)
 
 # Delete
-db['delete']({'name': 'Tom', 'age': '3'})
+db.delete({'name': 'Tom', 'age': '3'})
 
 # New table
-db['create_table'](['phone', 'price'], 'phone_price')
-db['insert']({'phone':'iPhone X', 'price': '999'}, table='phone_price')
-print( list( db['search'](query.phone == 'iPhone X', table='phone_price') ) )
+db.create_table(['phone', 'price'], 'phone_price')
+db.insert({'phone':'iPhone X', 'price': '999'}, table='phone_price')
+print( list( db.search(query.phone == 'iPhone X', table='phone_price') ) )
 
 # Del table
-db['purge']('phone_price')
+db.purge('phone_price')
 
 # Print all data from table
-print( list( db['all']('phone_price') ) )
+print( list( db.all('phone_price') ) )
 ```
 
 ### License (GPL-3.0)
