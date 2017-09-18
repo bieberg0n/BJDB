@@ -259,7 +259,7 @@ def BJDB(filename, header=None):
         return list(db.keys())
 
 
-    method = {
+    method_dict = {
         'insert': insert,
         'search': search,
         'exist': exist,
@@ -271,6 +271,12 @@ def BJDB(filename, header=None):
         'all': all,
         'tables': tables
     }
+
+    class Method():
+        def __getattr__(self, item):
+            return method_dict[item]
+
+    method = Method()
     return method
 
 
@@ -279,44 +285,51 @@ def test1():
 
     db = BJDB(filename, ['url'])
     print('初始化数据库')
-    print(list(db['all']()))
+    print(list(db.all()))
 
-    db['insert']({'url': 'http://example1.com'})
-    db['insert']({'url': 'http://example2.com'})
-    # db['insert']({'url': 'http://example3.com'})
+    db.insert({'url': 'http://example1.com'})
+    db.insert({'url': 'http://example2.com'})
+    # db.insert({'url': 'http://example3.com'})
     # print('测试插入')
-    # print(list(db['all']()))
+    # print(list(db.all()))
     # os.remove(filename)
 
 
     e = Query()
-    print('搜索c', list(db['search'](e.url == 'http://example1.com')))
-    print('是否存在', db['exist']({'url': 'http://example2.com'}))
-    print('是否存在', db['exist']({'url': 'http://example3.com'}))
+    print('搜索c', list(db.search(e.url == 'http://example1.com')))
+    print('是否存在', db.exist({'url': 'http://example2.com'}))
+    print('是否存在', db.exist({'url': 'http://example3.com'}))
 
-    # db['update']({'url': 'http://ip.cn'}, e.uid == 'a')
-    # print('测试修改', db['all']())
+    # db.update({'url': 'http://ip.cn'}, e.uid == 'a')
+    # print('测试修改', db.all())
 
-    # db['delete'](e.uid == 'b')
-    # db['delete'](e.uid == 'c')
-    db['delete']({'url': 'http://example2.com'})
+    # db.delete(e.uid == 'b')
+    # db.delete(e.uid == 'c')
+    db.delete({'url': 'http://example2.com'})
     print('测试删除')
-    print(list(db['all']()))
+    print(list(db.all()))
 
 
     db = BJDB(filename)
-    print(list(db['all']()))
+    print(list(db.all()))
 
-    db['merge']()
-    print(list(db['all']()))
+    db.merge()
+    print(list(db.all()))
 
-    print(db['tables']())
+    print(db.tables())
 
     os.remove(filename)
 
 def test2():
-    pass
+    filename = 'test.db'
 
+    db = BJDB(filename, ['url'])
+    print('初始化数据库')
+    # print(list(db['all']()))
+    db.insert({'url': 'http://example1.com'})
+    print( list(db.all() ) )
+
+    os.remove(filename)
 
 
 if __name__  == '__main__':
