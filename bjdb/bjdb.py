@@ -130,71 +130,72 @@ def write(writer, bytes_):
     writer.flush()
 
 
-def BJDB(filename, header=None):
-    if os.path.isfile(filename):
-        db, writer = read_db(filename)
+class BJDB:
+    def __init__(self, filename, header=None):
+        self.filename = filename
+        if os.path.isfile(filename):
+            self.db, self.writer = read_db(filename)
 
-    else:
-        db, writer = create_db(filename, header)
+        else:
+            self.db, self.writer = create_db(filename, header)
 
-    def insert(data, table='_default'):
-        data_tuple = tuple(str(data[h]) for h in db[table]['headers'])
+    def insert(self, data, table='_default'):
+        data_tuple = tuple(str(data[h]) for h in self.db[table]['headers'])
         record = list_to_record(table,
                                 data_tuple)
-        db[table]['datas'].add(data_tuple)
-        write(writer, record)
-        # print(db)
+        self.db[table]['datas'].add(data_tuple)
+        write(self.writer, record)
 
-    def exist(data, table='_default'):
-        data_tuple = tuple(str(data[h]) for h in db[table]['headers'])
-        return data_tuple in db[table]['datas']
+    def exist(self, data, table='_default'):
+        data_tuple = tuple(str(data[h]) for h in self.db[table]['headers'])
+        return data_tuple in self.db[table]['datas']
 
-    def search(cond, table='_default'):
-        headers = db[table]['headers']
-        elements_dict = (to_dict(headers, e) for e in db[table]['datas'] if e)
+    def search(self, cond, table='_default'):
+        headers = self.db[table]['headers']
+        elements_dict = (to_dict(headers, e) for e in self.db[table]['datas'] if e)
 
         results = (e for e in elements_dict if cond(e))
         return results
 
-    def update_element(table, _id, olddata, newdata, record_type=b'u'):
+    def update_element(self, table, _id, olddata, newdata, record_type=b'u'):
         if record_type == b'u':
             olddata.update(newdata)
-            newdata_list = [olddata[h] for h in db[table]['headers']]
+            newdata_list = [olddata[h] for h in self.db[table]['headers']]
         else:
             newdata_list = []
-        db[table]['datas'][_id] = newdata_list
+        self.db[table]['datas'][_id] = newdata_list
 
         record = list_to_record(table=table,
                                 # _id=_id,
                                 data_list=newdata_list,
                                 record_type=record_type)
-        write(writer, record)
+        write(self.writer, record)
 
-    def delete_element(table, _id):
-        update_element(table, _id, {}, {}, b'd')
+    def delete_element(self, table, _id):
+        self.update_element(table, _id, {}, {}, b'd')
 
-    def delete(data_dict, table='_default'):
-        headers = db[table]['headers']
+    def delete(self, data_dict, table='_default'):
+        headers = self.db[table]['headers']
         element = tuple(data_dict[h] for h in headers)
-        db[table]['datas'].remove(element)
+        self.db[table]['datas'].remove(element)
 
-        write(writer, list_to_record(table, element, record_type=b'd'))
+        write(self.writer, list_to_record(table, element, record_type=b'd'))
 
-    def update(newdata, cond, table='_default'):
-        headers = db[table]['headers']
-        elements_dict = (to_dict(headers, e) for e in db[table]['datas'])
+    def update(self, newdata, cond, table='_default'):
+        headers = self.db[table]['headers']
+        elements_dict = (to_dict(headers, e) for e in self.db[table]['datas'])
 
-        [update_element(table, i, olddata, newdata)
+        [self.update_element(table, i, olddata, newdata)
          for i, olddata in enumerate(elements_dict) if cond(olddata)]
 
-    def merge():
-        writer.close()
-        temp_file = filename + '~'
+    def merge(self):
+        self.writer.close()
+        temp_file = self.filename + '~'
         with open(temp_file, 'wb') as f:
-            for table in db:
-                headers = db[table]['headers']
+            for table in self.db:
+                headers = self.db[table]['headers']
                 f.write(to_header_bytes(headers))
-                for data in db[table]['datas']:
+                for data in self.db[table]['datas']:
                     if data:
                         record = list_to_record(table=table,
                                                 # _id=_id,
@@ -202,49 +203,28 @@ def BJDB(filename, header=None):
                         f.write(record)
                     else:
                         pass
-        os.rename(temp_file, filename)
+        os.rename(temp_file, self.filename)
 
-    def create_table(headers, table_name='_default'):
-        db[table_name] = {
+    def create_table(self, headers, table_name='_default'):
+        self.db[table_name] = {
             'headers': headers,
             'datas': set()
         }
-        writer.write(to_header_bytes(headers, table_name))
+        self.writer.write(to_header_bytes(headers, table_name))
 
-    def purge(table='_default'):
-        db[table]['datas'] = set()
-        writer.write(list_to_record(table, tuple(), b'p'))
+    def purge(self, table='_default'):
+        self.db[table]['datas'] = set()
+        self.writer.write(list_to_record(table, tuple(), b'p'))
 
-    def all(table='_default'):
-        headers = db[table]['headers']
-        return (to_dict(headers, e) for e in db[table]['datas'])
+    def all(self, table='_default'):
+        headers = self.db[table]['headers']
+        return (to_dict(headers, e) for e in self.db[table]['datas'])
 
-    def tables():
-        return list(db.keys())
+    def tables(self):
+        return list(self.db.keys())
 
-    def headers(table='_default'):
-        return db[table]['headers']
-
-    method_dict = {
-        'insert': insert,
-        'search': search,
-        'exist': exist,
-        'delete': delete,
-        # 'update': update,
-        'merge': merge,
-        'create_table': create_table,
-        'purge': purge,
-        'all': all,
-        'tables': tables,
-        'headers': headers
-    }
-
-    class Method:
-        def __getattr__(self, item):
-            return method_dict[item]
-
-    method = Method()
-    return method
+    def headers(self, table='_default'):
+        return self.db[table]['headers']
 
 
 def test1():
