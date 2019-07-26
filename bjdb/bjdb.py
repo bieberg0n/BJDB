@@ -136,7 +136,7 @@ class BJDB:
         self.writer.flush()
 
     def dict_to_tuple(self, table, dic):
-        return tuple(str(dic[h]) for h in self.db[table]['headers'])
+        return tuple(str(dic.get(h)) for h in self.db[table]['headers'])
 
     def insert(self, table, data):
         data_tuple = self.dict_to_tuple(table, data)
