@@ -1,13 +1,5 @@
 import os
 import struct
-import pprint
-
-
-def log(*args):
-    if len(args) == 1:
-        pprint.pprint(*args)
-    else:
-        print(*args)
 
 
 def pack_data(bytes_data):

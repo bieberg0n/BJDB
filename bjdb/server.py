@@ -76,8 +76,6 @@ class Server:
                 conn.close()
                 return
 
-
-
     def run(self):
         s = socket.socket()
         s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
