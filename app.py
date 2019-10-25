@@ -1,3 +1,5 @@
+from time import sleep
+from threading import Lock
 from flask import Flask, jsonify, request, abort
 from bjdb import BJDB
 from utils import log
@@ -5,6 +7,8 @@ from utils import log
 
 app = Flask(__name__)
 db = BJDB('bj.db')
+lock = Lock()
+# log('a process')
 
 
 @app.route('/', methods=['GET'])
@@ -21,7 +25,8 @@ def headers(table):
 def new_tables():
     data = request.get_json()
     if data.get('table') and data.get('headers'):
-        db.create_table(data['table'], data['headers'])
+        with lock:
+            db.create_table(data['table'], data['headers'])
         return '', 204
 
     else:
@@ -32,7 +37,8 @@ def new_tables():
 def insert(table):
     data = request.get_json()
     try:
-        db.insert(table, data)
+        with lock:
+            db.insert(table, data)
         return '', 204
     except Exception as e:
         log(e)
@@ -62,7 +68,8 @@ def update(table):
     try:
         new_data = data['newdata']
         key_data = data['keydata']
-        db.update(table, new_data, make_cond(key_data))
+        with lock:
+            db.update(table, new_data, make_cond(key_data))
         return '', 204
 
     except Exception as e:
@@ -74,7 +81,8 @@ def update(table):
 def delete(table):
     data = request.get_json()
     try:
-        db.delete(table, make_cond(data))
+        with lock:
+            db.delete(table, make_cond(data))
         return '', 204
 
     except Exception as e:
@@ -89,13 +97,15 @@ def all_data(table):
 
 @app.route('/merge', methods=['POST'])
 def merge():
-    db.merge()
+    with lock:
+        db.merge()
     return '', 204
 
 
 @app.route('/tables/<table>/all', methods=['DELETE'])
 def purge(table):
-    db.purge(table)
+    with lock:
+        db.purge(table)
     return '', 204
 
 
